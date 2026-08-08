@@ -1,0 +1,49 @@
+# ============================================================================
+# Local development stack.
+#
+#   openfga        - the OpenFGA authorization server (HTTP API on host :8080)
+#   openfga-wrapper - this Spring Boot service (host :8081), talking to OpenFGA
+#
+# Bring the whole stack up with:   docker compose up --build
+# Bring just OpenFGA up with:      docker compose up openfga
+#
+# Note: OpenFGA also listens on 8081 for gRPC *inside* the container, but that
+# port is intentionally NOT mapped to the host, so it never collides with the
+# wrapper service which owns host port 8081.
+# ============================================================================
+services:
+
+  openfga:
+    image: openfga/openfga:latest
+    container_name: openfga
+    # Use the in-memory datastore for zero-setup local development.
+    # For persistence, switch to the postgres/mysql engine + a datastore-uri.
+    command: run
+    environment:
+      OPENFGA_DATASTORE_ENGINE: memory
+      OPENFGA_LOG_LEVEL: info
+      OPENFGA_PLAYGROUND_ENABLED: "true"
+    ports:
+      - "8080:8080"   # HTTP API
+      - "3000:3000"   # Playground UI (http://localhost:3000/playground)
+    healthcheck:
+      # OpenFGA ships with grpc_health_probe on the image.
+      test: [ "CMD", "/usr/local/bin/grpc_health_probe", "-addr=localhost:8081" ]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  openfga-wrapper:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: openfga-wrapper
+    depends_on:
+      openfga:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      # Reach OpenFGA over the compose network by service name.
+      OPENFGA_API_URL: http://openfga:8080
+    ports:
+      - "8081:8081"

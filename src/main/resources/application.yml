@@ -1,0 +1,36 @@
+# ============================================================================
+# Base configuration — shared by all profiles.
+# Environment-specific overrides live in application-dev.yml / application-prod.yml.
+# Activate a profile with:  --spring.profiles.active=dev  (or the SPRING_PROFILES_ACTIVE env var)
+# ============================================================================
+spring:
+  application:
+    name: openfga-wrapper
+  profiles:
+    # Default to the local/dev profile when none is specified.
+    default: dev
+
+server:
+  # The wrapper service listens on 8081 (OpenFGA itself uses 8080).
+  port: 8081
+
+# OpenFGA connection settings — bound in OpenFGAConfig via @Value("${openfga.*}").
+# All values can be overridden with environment variables, e.g. OPENFGA_API_URL.
+openfga:
+  api-url: ${OPENFGA_API_URL:http://localhost:8080}
+  store-id: ${OPENFGA_STORE_ID:}
+  authorization-model-id: ${OPENFGA_MODEL_ID:}
+
+# Expose a curated set of Actuator endpoints for observability.
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: when-authorized
+
+logging:
+  level:
+    com.jacob.openfga: INFO

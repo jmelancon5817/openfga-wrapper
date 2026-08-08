@@ -1,0 +1,47 @@
+name: Build
+
+# Run on every push to main and on all pull requests targeting the repo.
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+jobs:
+  build:
+    name: Build & Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+
+      # `clean install` compiles, runs tests, and produces the packaged artifact.
+      - name: Build and run tests (mvn clean install)
+        run: mvn -B clean install
+
+      # Explicit test run as requested; -o (offline) reuses the resolved deps.
+      - name: Run tests (mvn test)
+        run: mvn -B -o test
+
+      # Publish the JUnit results so the build status/report is visible on the PR.
+      - name: Publish test report
+        uses: mikepenz/action-junit-report@v4
+        if: always()
+        with:
+          report_paths: '**/target/surefire-reports/TEST-*.xml'
+
+      # Keep the built JAR available as a downloadable artifact for inspection.
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: openfga-wrapper-jar
+          path: target/*.jar
+          if-no-files-found: warn

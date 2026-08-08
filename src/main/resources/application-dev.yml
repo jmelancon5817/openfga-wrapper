@@ -1,0 +1,16 @@
+# ============================================================================
+# DEV profile — local development against the Docker Compose OpenFGA instance.
+# ============================================================================
+openfga:
+  api-url: ${OPENFGA_API_URL:http://localhost:8080}
+
+# Verbose health details and debug logging make local debugging easier.
+management:
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    com.jacob.openfga: DEBUG
+    dev.openfga: DEBUG
