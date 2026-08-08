@@ -15,8 +15,8 @@ import dev.openfga.sdk.api.client.model.ClientTupleKeyWithoutCondition;
 import dev.openfga.sdk.api.client.model.ClientWriteRequest;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 /**
@@ -28,12 +28,16 @@ import org.springframework.stereotype.Service;
  * to the controller. Any failure is normalised into an {@link OpenFGAException}
  * so the web layer can map it to a single, consistent HTTP status.
  */
-@Slf4j
 @Service
-@RequiredArgsConstructor
 public class OpenFGAService {
 
+    private static final Logger log = LoggerFactory.getLogger(OpenFGAService.class);
+
     private final OpenFgaClient fgaClient;
+
+    public OpenFGAService(OpenFgaClient fgaClient) {
+        this.fgaClient = fgaClient;
+    }
 
     /**
      * Checks whether a user has a relation on an object.
@@ -52,12 +56,11 @@ public class OpenFGAService {
         try {
             boolean allowed = Boolean.TRUE.equals(fgaClient.check(checkRequest).get().getAllowed());
             log.debug("Check result: allowed={}", allowed);
-            return CheckResponse.builder()
-                    .allowed(allowed)
-                    .user(request.getUser())
-                    .relation(request.getRelation())
-                    .object(request.getObject())
-                    .build();
+            return new CheckResponse(
+                    allowed,
+                    request.getUser(),
+                    request.getRelation(),
+                    request.getObject());
         } catch (Exception e) {
             throw handle("check", e);
         }
@@ -80,12 +83,11 @@ public class OpenFGAService {
 
         try {
             fgaClient.write(writeRequest).get();
-            return TupleResponse.builder()
-                    .message("Tuple written successfully")
-                    .user(request.getUser())
-                    .relation(request.getRelation())
-                    .object(request.getObject())
-                    .build();
+            return new TupleResponse(
+                    "Tuple written successfully",
+                    request.getUser(),
+                    request.getRelation(),
+                    request.getObject());
         } catch (Exception e) {
             throw handle("write tuple", e);
         }
@@ -108,12 +110,11 @@ public class OpenFGAService {
 
         try {
             fgaClient.write(deleteRequest).get();
-            return TupleResponse.builder()
-                    .message("Tuple deleted successfully")
-                    .user(request.getUser())
-                    .relation(request.getRelation())
-                    .object(request.getObject())
-                    .build();
+            return new TupleResponse(
+                    "Tuple deleted successfully",
+                    request.getUser(),
+                    request.getRelation(),
+                    request.getObject());
         } catch (Exception e) {
             throw handle("delete tuple", e);
         }
@@ -135,12 +136,11 @@ public class OpenFGAService {
 
         try {
             List<String> objects = fgaClient.listObjects(listRequest).get().getObjects();
-            return ListObjectsResponse.builder()
-                    .user(request.getUser())
-                    .relation(request.getRelation())
-                    .type(request.getType())
-                    .objects(objects)
-                    .build();
+            return new ListObjectsResponse(
+                    request.getUser(),
+                    request.getRelation(),
+                    request.getType(),
+                    objects);
         } catch (Exception e) {
             throw handle("list objects", e);
         }

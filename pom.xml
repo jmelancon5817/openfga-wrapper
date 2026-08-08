@@ -22,8 +22,6 @@
         <!-- Compile against Java 17 so the artifact runs on any JDK 17+ (including the local JDK 25) -->
         <java.version>17</java.version>
         <openfga-sdk.version>0.8.1</openfga-sdk.version>
-        <!-- Override Spring Boot's managed Lombok so it supports newer local JDKs (25/26) -->
-        <lombok.version>1.18.46</lombok.version>
         <!-- Bump Mockito + Byte Buddy so mocking works on newer local JDKs (25/26).
              CI runs on JDK 17 where the defaults would also be fine. -->
         <mockito.version>5.23.0</mockito.version>
@@ -56,13 +54,6 @@
             <version>${openfga-sdk.version}</version>
         </dependency>
 
-        <!-- Lombok removes boilerplate (getters/setters/builders). Compile-time only. -->
-        <dependency>
-            <groupId>org.projectlombok</groupId>
-            <artifactId>lombok</artifactId>
-            <optional>true</optional>
-        </dependency>
-
         <!-- Test stack: JUnit 5, Mockito, AssertJ, Spring test support -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -77,29 +68,6 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
-                <configuration>
-                    <excludes>
-                        <exclude>
-                            <groupId>org.projectlombok</groupId>
-                            <artifactId>lombok</artifactId>
-                        </exclude>
-                    </excludes>
-                </configuration>
-            </plugin>
-
-            <!-- Ensure Lombok annotation processing runs during compilation -->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <configuration>
-                    <annotationProcessorPaths>
-                        <path>
-                            <groupId>org.projectlombok</groupId>
-                            <artifactId>lombok</artifactId>
-                            <version>${lombok.version}</version>
-                        </path>
-                    </annotationProcessorPaths>
-                </configuration>
             </plugin>
 
             <!-- Allow Byte Buddy (via Mockito) to run on JDK versions it doesn't

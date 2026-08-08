@@ -5,7 +5,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
@@ -25,9 +26,10 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
  *   <li>{@code 500 Internal Server Error} — anything unexpected</li>
  * </ul>
  */
-@Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     /**
      * Handles bean-validation failures on {@code @Valid @RequestBody} arguments,
@@ -84,12 +86,12 @@ public class GlobalExceptionHandler {
 
     /** Builds a populated {@link ErrorResponse} for the given status and message. */
     private ErrorResponse baseError(HttpStatus status, String message, HttpServletRequest request) {
-        return ErrorResponse.builder()
-                .timestamp(Instant.now())
-                .status(status.value())
-                .error(status.getReasonPhrase())
-                .message(message)
-                .path(request.getRequestURI())
-                .build();
+        return new ErrorResponse(
+                Instant.now(),
+                status.value(),
+                status.getReasonPhrase(),
+                message,
+                request.getRequestURI(),
+                null);
     }
 }

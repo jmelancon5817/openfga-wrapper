@@ -9,8 +9,8 @@ import com.jacob.openfga.model.TupleResponse;
 import com.jacob.openfga.service.OpenFGAService;
 import jakarta.validation.Valid;
 import java.util.Map;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -28,13 +28,17 @@ import org.springframework.web.bind.annotation.RestController;
  * {@code /api/authorization}. Request bodies are validated before reaching the
  * service layer; failures are handled centrally by {@code GlobalExceptionHandler}.
  */
-@Slf4j
 @RestController
 @RequestMapping("/api/authorization")
-@RequiredArgsConstructor
 public class AuthorizationController {
 
+    private static final Logger log = LoggerFactory.getLogger(AuthorizationController.class);
+
     private final OpenFGAService openFGAService;
+
+    public AuthorizationController(OpenFGAService openFGAService) {
+        this.openFGAService = openFGAService;
+    }
 
     /**
      * Checks whether a user has a given relation on an object.
@@ -92,11 +96,7 @@ public class AuthorizationController {
             @RequestParam String relation,
             @RequestParam String type) {
         log.info("GET /objects user={} relation={} type={}", user, relation, type);
-        ListObjectsRequest request = ListObjectsRequest.builder()
-                .user(user)
-                .relation(relation)
-                .type(type)
-                .build();
+        ListObjectsRequest request = new ListObjectsRequest(user, relation, type);
         return ResponseEntity.ok(openFGAService.listObjects(request));
     }
 

@@ -47,12 +47,7 @@ class AuthorizationControllerTest {
     void check_returns200() throws Exception {
         CheckRequest request = new CheckRequest("user:anne", "reader", "document:roadmap");
         when(openFGAService.check(any(CheckRequest.class)))
-                .thenReturn(CheckResponse.builder()
-                        .allowed(true)
-                        .user("user:anne")
-                        .relation("reader")
-                        .object("document:roadmap")
-                        .build());
+                .thenReturn(new CheckResponse(true, "user:anne", "reader", "document:roadmap"));
 
         mockMvc.perform(post("/api/authorization/check")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -94,12 +89,8 @@ class AuthorizationControllerTest {
     void writeTuple_returns201() throws Exception {
         TupleRequest request = new TupleRequest("user:anne", "reader", "document:roadmap");
         when(openFGAService.writeTuple(any(TupleRequest.class)))
-                .thenReturn(TupleResponse.builder()
-                        .message("Tuple written successfully")
-                        .user("user:anne")
-                        .relation("reader")
-                        .object("document:roadmap")
-                        .build());
+                .thenReturn(new TupleResponse(
+                        "Tuple written successfully", "user:anne", "reader", "document:roadmap"));
 
         mockMvc.perform(post("/api/authorization/tuples")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -113,12 +104,8 @@ class AuthorizationControllerTest {
     void deleteTuple_returns200() throws Exception {
         TupleRequest request = new TupleRequest("user:anne", "reader", "document:roadmap");
         when(openFGAService.deleteTuple(any(TupleRequest.class)))
-                .thenReturn(TupleResponse.builder()
-                        .message("Tuple deleted successfully")
-                        .user("user:anne")
-                        .relation("reader")
-                        .object("document:roadmap")
-                        .build());
+                .thenReturn(new TupleResponse(
+                        "Tuple deleted successfully", "user:anne", "reader", "document:roadmap"));
 
         mockMvc.perform(delete("/api/authorization/tuples")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -131,12 +118,9 @@ class AuthorizationControllerTest {
     @DisplayName("GET /objects returns 200 with the accessible object list")
     void listObjects_returns200() throws Exception {
         when(openFGAService.listObjects(any()))
-                .thenReturn(ListObjectsResponse.builder()
-                        .user("user:anne")
-                        .relation("reader")
-                        .type("document")
-                        .objects(List.of("document:roadmap", "document:budget"))
-                        .build());
+                .thenReturn(new ListObjectsResponse(
+                        "user:anne", "reader", "document",
+                        List.of("document:roadmap", "document:budget")));
 
         mockMvc.perform(get("/api/authorization/objects")
                         .param("user", "user:anne")

@@ -3,7 +3,8 @@ package com.jacob.openfga.config;
 import dev.openfga.sdk.api.client.OpenFgaClient;
 import dev.openfga.sdk.api.configuration.ClientConfiguration;
 import dev.openfga.sdk.errors.FgaInvalidParameterException;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -18,9 +19,10 @@ import org.springframework.util.StringUtils;
  * be overridden per environment or via environment variables without code
  * changes.
  */
-@Slf4j
 @Configuration
 public class OpenFGAConfig {
+
+    private static final Logger log = LoggerFactory.getLogger(OpenFGAConfig.class);
 
     /** Base URL of the OpenFGA server, e.g. {@code http://localhost:8080}. */
     @Value("${openfga.api-url}")
