@@ -1,32 +1,39 @@
 package com.jacob.openfga.controller;
 
-import com.jacob.openfga.model.CheckRequest;
-import com.jacob.openfga.model.CheckResponse;
-import com.jacob.openfga.model.ListObjectsRequest;
-import com.jacob.openfga.model.ListObjectsResponse;
-import com.jacob.openfga.model.TupleRequest;
-import com.jacob.openfga.model.TupleResponse;
-import com.jacob.openfga.service.OpenFGAService;
-import jakarta.validation.Valid;
 import java.util.Map;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.jacob.openfga.model.CheckRequest;
+import com.jacob.openfga.model.CheckResponse;
+import com.jacob.openfga.model.ListObjectsRequest;
+import com.jacob.openfga.model.ListObjectsResponse;
+import com.jacob.openfga.model.TupleRequest;
+import com.jacob.openfga.model.TupleResponse;
+import com.jacob.openfga.model.UserPermissionsResponse;
+import com.jacob.openfga.service.OpenFGAService;
+
+import jakarta.validation.Valid;
+
 /**
  * REST facade for OpenFGA fine-grained authorization operations.
  *
- * <p>Exposes permission checks, tuple management, and object listing under
+ * <p>
+ * Exposes permission checks, tuple management, and object listing under
  * {@code /api/authorization}. Request bodies are validated before reaching the
- * service layer; failures are handled centrally by {@code GlobalExceptionHandler}.
+ * service layer; failures are handled centrally by
+ * {@code GlobalExceptionHandler}.
  */
 @RestController
 @RequestMapping("/api/authorization")
@@ -82,12 +89,13 @@ public class AuthorizationController {
     /**
      * Lists the objects of a given type that a user can access via a relation.
      *
-     * <p>Parameters are supplied as query string values, e.g.
+     * <p>
+     * Parameters are supplied as query string values, e.g.
      * {@code /api/authorization/objects?user=user:anne&relation=reader&type=document}.
      *
-     * @param user     the subject, e.g. {@code user:anne}
+     * @param user the subject, e.g. {@code user:anne}
      * @param relation the relation, e.g. {@code reader}
-     * @param type     the object type, e.g. {@code document}
+     * @param type the object type, e.g. {@code document}
      * @return {@code 200 OK} with the list of accessible objects
      */
     @GetMapping("/objects")
@@ -103,7 +111,8 @@ public class AuthorizationController {
     /**
      * Lightweight liveness check for this wrapper service.
      *
-     * <p>Deep health (including OpenFGA connectivity) is available via the
+     * <p>
+     * Deep health (including OpenFGA connectivity) is available via the
      * Actuator endpoint at {@code /actuator/health}.
      *
      * @return {@code 200 OK} with a simple status payload
@@ -114,4 +123,14 @@ public class AuthorizationController {
                 "status", "UP",
                 "service", "openfga-wrapper"));
     }
+
+    @GetMapping("/users/{userId}/permissions")
+    public ResponseEntity<UserPermissionsResponse> getUserPermissions(
+            @PathVariable String userId) {
+
+        UserPermissionsResponse response
+                = openFGAService.getUserPermissions(userId);
+        return ResponseEntity.ok(response);
+    }
+
 }
