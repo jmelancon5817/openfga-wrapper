@@ -1,11 +1,20 @@
 package com.jacob.openfga.service;
 
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import static org.mockito.ArgumentMatchers.any;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.jacob.openfga.exception.OpenFGAException;
 import com.jacob.openfga.model.CheckRequest;
@@ -14,6 +23,8 @@ import com.jacob.openfga.model.ListObjectsRequest;
 import com.jacob.openfga.model.ListObjectsResponse;
 import com.jacob.openfga.model.TupleRequest;
 import com.jacob.openfga.model.TupleResponse;
+import com.jacob.openfga.model.UserPermissionsResponse;
+
 import dev.openfga.sdk.api.client.OpenFgaClient;
 import dev.openfga.sdk.api.client.model.ClientCheckRequest;
 import dev.openfga.sdk.api.client.model.ClientCheckResponse;
@@ -21,14 +32,6 @@ import dev.openfga.sdk.api.client.model.ClientListObjectsRequest;
 import dev.openfga.sdk.api.client.model.ClientListObjectsResponse;
 import dev.openfga.sdk.api.client.model.ClientWriteRequest;
 import dev.openfga.sdk.api.client.model.ClientWriteResponse;
-import java.util.List;
-import java.util.concurrent.CompletableFuture;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
 
 /**
  * Unit tests for {@link OpenFGAService}, mocking the OpenFGA SDK client so the
@@ -151,5 +154,41 @@ class OpenFGAServiceTest {
                 new ListObjectsRequest("user:anne", "reader", "document")))
                 .isInstanceOf(OpenFGAException.class)
                 .hasMessageContaining("list objects");
+    }
+
+    @Test
+    @DisplayName("getUserPermissions() returns all permissions across all relations")
+    void getUserPermissions_returnsAllPermissions() throws Exception {
+
+        // Mock the SDK response for listObjects
+        ClientListObjectsResponse sdkResponse = mock(ClientListObjectsResponse.class);
+        when(sdkResponse.getObjects())
+                .thenReturn(List.of("document:report")) // first call - reader
+                .thenReturn(List.of("document:budget")) // second call - writer
+                .thenReturn(List.of());                  // third call - owner (empty)
+
+        when(fgaClient.listObjects(any(ClientListObjectsRequest.class)))
+                .thenReturn(CompletableFuture.completedFuture(sdkResponse));
+
+        // Act
+        UserPermissionsResponse result = service.getUserPermissions("user:jacob");
+
+        // Assert
+        assertThat(result.getUser()).isEqualTo("user:jacob");
+        assertThat(result.getPermissions()).hasSize(2);
+        assertThat(result.getTotal()).isEqualTo(2);
+    }
+
+    @Test
+    @DisplayName("getUserPermissions() wraps SDK failures in OpenFGAException")
+    void getUserPermissions_wrapsFailures() throws Exception {
+
+        when(fgaClient.listObjects(any(ClientListObjectsRequest.class)))
+                .thenReturn(CompletableFuture.failedFuture(
+                        new RuntimeException("timeout")));
+
+        assertThatThrownBy(() -> service.getUserPermissions("user:jacob"))
+                .isInstanceOf(OpenFGAException.class)
+                .hasMessageContaining("get user permissions");
     }
 }

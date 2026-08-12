@@ -1,7 +1,16 @@
 package com.jacob.openfga.controller;
 
+import java.util.List;
+
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -13,17 +22,11 @@ import com.jacob.openfga.exception.OpenFGAException;
 import com.jacob.openfga.model.CheckRequest;
 import com.jacob.openfga.model.CheckResponse;
 import com.jacob.openfga.model.ListObjectsResponse;
+import com.jacob.openfga.model.PermissionItem;
 import com.jacob.openfga.model.TupleRequest;
 import com.jacob.openfga.model.TupleResponse;
+import com.jacob.openfga.model.UserPermissionsResponse;
 import com.jacob.openfga.service.OpenFGAService;
-import java.util.List;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.http.MediaType;
-import org.springframework.test.web.servlet.MockMvc;
 
 /**
  * Web-layer tests for {@link AuthorizationController} using MockMvc with a
@@ -50,8 +53,8 @@ class AuthorizationControllerTest {
                 .thenReturn(new CheckResponse(true, "user:anne", "reader", "document:roadmap"));
 
         mockMvc.perform(post("/api/authorization/check")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.allowed").value(true))
                 .andExpect(jsonPath("$.user").value("user:anne"));
@@ -63,8 +66,8 @@ class AuthorizationControllerTest {
         CheckRequest invalid = new CheckRequest("", "reader", "document:roadmap");
 
         mockMvc.perform(post("/api/authorization/check")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(invalid)))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(invalid)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.status").value(400))
                 .andExpect(jsonPath("$.validationErrors.user").exists());
@@ -78,8 +81,8 @@ class AuthorizationControllerTest {
                 .thenThrow(new OpenFGAException("Failed to check in OpenFGA: connection refused"));
 
         mockMvc.perform(post("/api/authorization/check")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadGateway())
                 .andExpect(jsonPath("$.status").value(502));
     }
@@ -93,8 +96,8 @@ class AuthorizationControllerTest {
                         "Tuple written successfully", "user:anne", "reader", "document:roadmap"));
 
         mockMvc.perform(post("/api/authorization/tuples")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.message").value("Tuple written successfully"));
     }
@@ -108,8 +111,8 @@ class AuthorizationControllerTest {
                         "Tuple deleted successfully", "user:anne", "reader", "document:roadmap"));
 
         mockMvc.perform(delete("/api/authorization/tuples")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").value("Tuple deleted successfully"));
     }
@@ -123,9 +126,9 @@ class AuthorizationControllerTest {
                         List.of("document:roadmap", "document:budget")));
 
         mockMvc.perform(get("/api/authorization/objects")
-                        .param("user", "user:anne")
-                        .param("relation", "reader")
-                        .param("type", "document"))
+                .param("user", "user:anne")
+                .param("relation", "reader")
+                .param("type", "document"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.objects.length()").value(2))
                 .andExpect(jsonPath("$.objects[0]").value("document:roadmap"));
@@ -135,8 +138,8 @@ class AuthorizationControllerTest {
     @DisplayName("GET /objects returns 400 when a required parameter is missing")
     void listObjects_returns400_whenParamMissing() throws Exception {
         mockMvc.perform(get("/api/authorization/objects")
-                        .param("user", "user:anne")
-                        .param("relation", "reader"))
+                .param("user", "user:anne")
+                .param("relation", "reader"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.status").value(400));
     }
@@ -148,5 +151,41 @@ class AuthorizationControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("UP"))
                 .andExpect(jsonPath("$.service").value("openfga-wrapper"));
+    }
+
+    @Test
+    void getUserPermissions_shouldReturn200_withPermissions() throws Exception {
+
+        // ARRANGE
+        List<PermissionItem> items = List.of(
+                new PermissionItem("reader", "document:report"),
+                new PermissionItem("writer", "document:budget")
+        );
+        UserPermissionsResponse fakeResponse
+                = new UserPermissionsResponse("user:jacob", items, 2);
+
+        when(openFGAService.getUserPermissions("user:jacob"))
+                .thenReturn(fakeResponse);
+
+        // ACT + ASSERT
+        mockMvc.perform(get("/api/authorization/users/user:jacob/permissions"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.user").value("user:jacob"))
+                .andExpect(jsonPath("$.total").value(2))
+                .andExpect(jsonPath("$.permissions[0].relation").value("reader"))
+                .andExpect(jsonPath("$.permissions[0].object").value("document:report"));
+    }
+
+    @Test
+    void getUserPermissions_shouldReturn502_whenOpenFGAFails() throws Exception {
+
+        // ARRANGE
+        when(openFGAService.getUserPermissions("user:jacob"))
+                .thenThrow(new OpenFGAException("Connection failed", new RuntimeException()));
+
+        // ACT + ASSERT
+        mockMvc.perform(get("/api/authorization/users/user:jacob/permissions"))
+                .andExpect(status().isBadGateway())
+                .andExpect(jsonPath("$.status").value(502));
     }
 }

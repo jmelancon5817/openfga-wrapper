@@ -1,32 +1,40 @@
 package com.jacob.openfga.service;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.ExecutionException;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
+
 import com.jacob.openfga.exception.OpenFGAException;
 import com.jacob.openfga.model.CheckRequest;
 import com.jacob.openfga.model.CheckResponse;
 import com.jacob.openfga.model.ListObjectsRequest;
 import com.jacob.openfga.model.ListObjectsResponse;
+import com.jacob.openfga.model.PermissionItem;
 import com.jacob.openfga.model.TupleRequest;
 import com.jacob.openfga.model.TupleResponse;
+import com.jacob.openfga.model.UserPermissionsResponse;
+
 import dev.openfga.sdk.api.client.OpenFgaClient;
 import dev.openfga.sdk.api.client.model.ClientCheckRequest;
 import dev.openfga.sdk.api.client.model.ClientListObjectsRequest;
 import dev.openfga.sdk.api.client.model.ClientTupleKey;
 import dev.openfga.sdk.api.client.model.ClientTupleKeyWithoutCondition;
 import dev.openfga.sdk.api.client.model.ClientWriteRequest;
-import java.util.List;
-import java.util.concurrent.ExecutionException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Service;
 
 /**
  * Service layer that translates the wrapper's simple DTOs into OpenFGA SDK
  * calls and back again.
  *
- * <p>All SDK interactions are asynchronous ({@link java.util.concurrent.CompletableFuture});
- * this service intentionally blocks on the result to present a synchronous API
- * to the controller. Any failure is normalised into an {@link OpenFGAException}
- * so the web layer can map it to a single, consistent HTTP status.
+ * <p>
+ * All SDK interactions are asynchronous
+ * ({@link java.util.concurrent.CompletableFuture}); this service intentionally
+ * blocks on the result to present a synchronous API to the controller. Any
+ * failure is normalised into an {@link OpenFGAException} so the web layer can
+ * map it to a single, consistent HTTP status.
  */
 @Service
 public class OpenFGAService {
@@ -159,5 +167,45 @@ public class OpenFGAService {
         Throwable cause = (e instanceof ExecutionException && e.getCause() != null) ? e.getCause() : e;
         log.error("OpenFGA '{}' operation failed: {}", operation, cause.getMessage(), cause);
         return new OpenFGAException("Failed to " + operation + " in OpenFGA: " + cause.getMessage(), cause);
+    }
+
+    public UserPermissionsResponse getUserPermissions(String userId) {
+        log.debug("Getting all permissions for user: {}", userId);
+
+        List<String> relations = List.of("reader", "writer", "owner");
+        List<PermissionItem> permissions = new ArrayList<>();
+
+        try {
+            for (String relation : relations) {
+
+                ClientListObjectsRequest sdkRequest = new ClientListObjectsRequest()
+                        .user(userId)
+                        .relation(relation)
+                        .type("document");
+
+                List<String> objects = fgaClient
+                        .listObjects(sdkRequest)
+                        .get()
+                        .getObjects();
+
+                if (objects != null) {
+                    for (String object : objects) {
+                        permissions.add(new PermissionItem(relation, object));
+                    }
+                }
+            }
+
+            log.debug("Found {} permissions for user: {}",
+                    permissions.size(), userId);
+
+            return new UserPermissionsResponse(
+                    userId,
+                    permissions,
+                    permissions.size()
+            );
+
+        } catch (Exception e) {
+            throw handle("get user permissions", e);
+        }
     }
 }
